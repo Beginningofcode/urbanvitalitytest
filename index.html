@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanVitality - Data Pathways to Healthy Cities</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2a4365, #4a5568);
+            color: #f7fafc;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a2a6c, #2a4365, #4a5568);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 1.5s ease;
+        }
+
+        #splash-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo-img {
+            width: 80px;
+            height: 80px;
+            margin-right: 20px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #63b3ed;
+        }
+
+        .splash-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #63b3ed, #68d391);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .splash-subtitle {
+            font-size: 1.2rem;
+            color: #cbd5e0;
+            text-align: center;
+        }
+
+        .team-name {
+            position: absolute;
+            bottom: 2rem;
+            font-size: 1.1rem;
+            color: #a0aec0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #4a5568;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-logo {
+            width: 50px;
+            height: 50px;
+            margin-right: 15px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #63b3ed;
+        }
+
+        .header-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #63b3ed, #68d391);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .data-source-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .data-source-btn {
+            padding: 10px 20px;
+            background: #2d3748;
+            border: none;
+            border-radius: 5px;
+            color: #e2e8f0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .data-source-btn.active {
+            background: #4299e1;
+            color: white;
+        }
+
+        .data-source-btn:hover {
+            background: #4a5568;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        .map-container {
+            height: 600px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .info-panel {
+            background: #2d3748;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+            max-height: 600px;
+        }
+
+        .country-info {
+            display: none;
+        }
+
+        .country-info.active {
+            display: block;
+        }
+
+        .country-name {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #63b3ed;
+            border-bottom: 1px solid #4a5568;
+            padding-bottom: 10px;
+        }
+
+        .data-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #4a5568;
+            border-radius: 5px;
+        }
+
+        .data-label {
+            font-weight: 600;
+            color: #a0aec0;
+            margin-bottom: 5px;
+        }
+
+        .data-value {
+            font-size: 1.1rem;
+            color: #e2e8f0;
+        }
+
+        .close-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            float: right;
+            margin-top: 10px;
+        }
+
+        .close-btn:hover {
+            background: #c53030;
+        }
+
+        .chat-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 350px;
+            height: 450px;
+            background: #2d3748;
+            border-radius: 10px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            transform: translateY(calc(100% - 50px));
+            transition: transform 0.3s ease;
+        }
+
+        .chat-container.open {
+            transform: translateY(0);
+        }
+
+        .chat-header {
+            background: #4299e1;
+            padding: 15px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .chat-title {
+            font-weight: 600;
+            color: white;
+        }
+
+        .toggle-chat {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+            line-height: 1.4;
+        }
+
+        .bot-message {
+            background: #4a5568;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+
+        .user-message {
+            background: #4299e1;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+
+        .suggested-questions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .suggested-question {
+            background: #4a5568;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 18px;
+            color: #e2e8f0;
+            text-align: left;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .suggested-question:hover {
+            background: #5a6578;
+        }
+
+        .chat-input-container {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #4a5568;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            background: #4a5568;
+            color: #e2e8f0;
+            outline: none;
+        }
+
+        .send-btn {
+            background: #4299e1;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-left: 10px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .send-btn:hover {
+            background: #3182ce;
+        }
+
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            padding: 20px;
+            color: #a0aec0;
+            border-top: 1px solid #4a5568;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .info-panel {
+                max-height: 400px;
+            }
+            
+            .chat-container {
+                width: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .splash-title {
+                font-size: 2.5rem;
+            }
+            
+            .header-title {
+                font-size: 1.5rem;
+            }
+            
+            .chat-container {
+                width: calc(100% - 40px);
+                left: 20px;
+                right: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <div class="logo-container">
+            <div class="logo-img-placeholder"></div>
+            <h1 class="splash-title">UrbanVitality</h1>
+        </div>
+        <p class="splash-subtitle">Data Pathways to Healthy Cities and Human Settlements</p>
+        <p class="team-name">Created by FPT Aerospace Team</p>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container" style="display: none;">
+        <header>
+            <div class="header-left">
+                <div class="header-logo-placeholder"></div>
+                <h1 class="header-title">UrbanVitality</h1>
+            </div>
+            <div class="data-source-selector">
+                <button class="data-source-btn active" id="nasa-data-btn">NASA Data</button>
+                <button class="data-source-btn" id="world-data-btn">World Data</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            <div class="info-panel">
+                <div class="country-info" id="default-info">
+                    <h2 class="country-name">Welcome to UrbanVitality</h2>
+                    <p>Select a data source and click on any country to view environmental and urban planning data.</p>
+                    <p>Our tool integrates NASA Earth observation data with global datasets to help urban planners develop strategies for sustainable city growth.</p>
+                    <div class="data-item">
+                        <div class="data-label">Challenge Focus</div>
+                        <div class="data-value">Using NASA data to develop smart strategies for city growth that maintain both the wellbeing of people and the environment.</div>
+                    </div>
+                </div>
+                <div class="country-info" id="country-data">
+                    <h2 class="country-name" id="selected-country">Country Name</h2>
+                    <div id="country-data-content">
+                        <!-- Data will be populated here -->
+                    </div>
+                    <button class="close-btn" id="close-country-btn">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Chat Assistant -->
+        <div class="chat-container" id="chat-container">
+            <div class="chat-header" id="chat-header">
+                <div class="chat-title">Environmental Solutions Assistant</div>
+                <button class="toggle-chat" id="toggle-chat">−</button>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message bot-message">
+                    Hello! I'm your Environmental Solutions Assistant. I can help answer questions about sustainable urban planning, climate resilience, and environmental solutions. How can I assist you today?
+                </div>
+                <div class="suggested-questions">
+                    <button class="suggested-question">How can cities reduce their carbon footprint?</button>
+                    <button class="suggested-question">What are green infrastructure solutions for urban areas?</button>
+                    <button class="suggested-question">How can NASA data help with urban planning?</button>
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="chat-input" placeholder="Ask about environmental solutions...">
+                <button class="send-btn" id="send-btn">➤</button>
+            </div>
+        </div>
+
+        <footer>
+            <p>UrbanVitality - Data Pathways to Healthy Cities and Human Settlements</p>
+            <p>FPT Aerospace Team | NASA Space Apps Challenge 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        // Splash screen transition
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                document.getElementById('splash-screen').classList.add('fade-out');
+                setTimeout(function() {
+                    document.getElementById('splash-screen').style.display = 'none';
+                    document.querySelector('.container').style.display = 'block';
+                }, 1500);
+            }, 3000);
+            
+            // Initialize the map
+            initMap();
+            
+            // Initialize chat functionality
+            initChat();
+            
+            // Initialize data source buttons
+            initDataSourceButtons();
+        });
+
+        // Map initialization
+        function initMap() {
+            // Create map centered on the world
+            const map = L.map('map').setView([20, 0], 2);
+            
+            // Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Sample country data (in a real implementation, this would come from APIs)
+            const countryData = {
+                "USA": {
+                    nasa: {
+                        "Air Quality Index": "45 (Moderate)",
+                        "Urban Heat Island Effect": "2.3°C above rural areas",
+                        "Green Space Coverage": "28% of urban areas",
+                        "Carbon Emissions": "14.7 tons per capita"
+                    },
+                    world: {
+                        "Population": "331 million",
+                        "Urbanization Rate": "83%",
+                        "Renewable Energy Usage": "12%",
+                        "Public Transport Coverage": "65% of urban population"
+                    }
+                },
+                "Brazil": {
+                    nasa: {
+                        "Deforestation Rate": "12,000 km² per year",
+                        "Air Quality Index": "55 (Moderate)",
+                        "Urban Heat Island Effect": "1.8°C above rural areas",
+                        "Carbon Emissions": "2.2 tons per capita"
+                    },
+                    world: {
+                        "Population": "213 million",
+                        "Urbanization Rate": "87%",
+                        "Renewable Energy Usage": "45%",
+                        "Public Transport Coverage": "75% of urban population"
+                    }
+                },
+                "Germany": {
+                    nasa: {
+                        "Air Quality Index": "32 (Good)",
+                        "Urban Heat Island Effect": "1.5°C above rural areas",
+                        "Green Space Coverage": "42% of urban areas",
+                        "Carbon Emissions": "8.9 tons per capita"
+                    },
+                    world: {
+                        "Population": "83 million",
+                        "Urbanization Rate": "77%",
+                        "Renewable Energy Usage": "46%",
+                        "Public Transport Coverage": "88% of urban population"
+                    }
+                },
+                "India": {
+                    nasa: {
+                        "Air Quality Index": "156 (Unhealthy)",
+                        "Urban Heat Island Effect": "3.1°C above rural areas",
+                        "Green Space Coverage": "15% of urban areas",
+                        "Carbon Emissions": "1.9 tons per capita"
+                    },
+                    world: {
+                        "Population": "1.38 billion",
+                        "Urbanization Rate": "35%",
+                        "Renewable Energy Usage": "23%",
+                        "Public Transport Coverage": "45% of urban population"
+                    }
+                },
+                "China": {
+                    nasa: {
+                        "Air Quality Index": "86 (Moderate)",
+                        "Urban Heat Island Effect": "2.7°C above rural areas",
+                        "Green Space Coverage": "22% of urban areas",
+                        "Carbon Emissions": "7.4 tons per capita"
+                    },
+                    world: {
+                        "Population": "1.41 billion",
+                        "Urbanization Rate": "61%",
+                        "Renewable Energy Usage": "26%",
+                        "Public Transport Coverage": "70% of urban population"
+                    }
+                }
+            };
+            
+            // Add click event to map
+            map.on('click', function(e) {
+                // In a real implementation, you would determine which country was clicked
+                // For this demo, we'll simulate country selection
+                const countries = ["USA", "Brazil", "Germany", "India", "China"];
+                const randomCountry = countries[Math.floor(Math.random() * countries.length)];
+                
+                showCountryData(randomCountry, countryData[randomCountry]);
+            });
+            
+            // Add some sample markers for demonstration
+            L.marker([39.8283, -98.5795]).addTo(map)
+                .bindPopup('United States<br>Click anywhere for country data')
+                .openPopup();
+                
+            L.marker([-14.2350, -51.9253]).addTo(map)
+                .bindPopup('Brazil<br>Click anywhere for country data');
+                
+            L.marker([51.1657, 10.4515]).addTo(map)
+                .bindPopup('Germany<br>Click anywhere for country data');
+                
+            L.marker([20.5937, 78.9629]).addTo(map)
+                .bindPopup('India<br>Click anywhere for country data');
+                
+            L.marker([35.8617, 104.1954]).addTo(map)
+                .bindPopup('China<br>Click anywhere for country data');
+        }
+        
+        // Show country data in the info panel
+        function showCountryData(countryName, data) {
+            document.getElementById('default-info').classList.remove('active');
+            document.getElementById('country-data').classList.add('active');
+            
+            document.getElementById('selected-country').textContent = countryName;
+            
+            const dataContent = document.getElementById('country-data-content');
+            dataContent.innerHTML = '';
+            
+            const dataSource = document.getElementById('nasa-data-btn').classList.contains('active') ? 'nasa' : 'world';
+            const selectedData = data[dataSource];
+            
+            for (const [key, value] of Object.entries(selectedData)) {
+                const dataItem = document.createElement('div');
+                dataItem.className = 'data-item';
+                
+                const dataLabel = document.createElement('div');
+                dataLabel.className = 'data-label';
+                dataLabel.textContent = key;
+                
+                const dataValue = document.createElement('div');
+                dataValue.className = 'data-value';
+                dataValue.textContent = value;
+                
+                dataItem.appendChild(dataLabel);
+                dataItem.appendChild(dataValue);
+                dataContent.appendChild(dataItem);
+            }
+        }
+        
+        // Close country data view
+        document.getElementById('close-country-btn').addEventListener('click', function() {
+            document.getElementById('country-data').classList.remove('active');
+            document.getElementById('default-info').classList.add('active');
+        });
+        
+        // Initialize data source buttons
+        function initDataSourceButtons() {
+            const nasaBtn = document.getElementById('nasa-data-btn');
+            const worldBtn = document.getElementById('world-data-btn');
+            
+            nasaBtn.addEventListener('click', function() {
+                nasaBtn.classList.add('active');
+                worldBtn.classList.remove('active');
+                
+                // Refresh displayed data if a country is selected
+                if (document.getElementById('country-data').classList.contains('active')) {
+                    const countryName = document.getElementById('selected-country').textContent;
+                    // In a real implementation, we would reload data for the selected country
+                }
+            });
+            
+            worldBtn.addEventListener('click', function() {
+                worldBtn.classList.add('active');
+                nasaBtn.classList.remove('active');
+                
+                // Refresh displayed data if a country is selected
+                if (document.getElementById('country-data').classList.contains('active')) {
+                    const countryName = document.getElementById('selected-country').textContent;
+                    // In a real implementation, we would reload data for the selected country
+                }
+            });
+        }
+        
+        // Chat functionality
+        function initChat() {
+            const chatContainer = document.getElementById('chat-container');
+            const toggleChat = document.getElementById('toggle-chat');
+            const chatMessages = document.getElementById('chat-messages');
+            const chatInput = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-btn');
+            const suggestedQuestions = document.querySelectorAll('.suggested-question');
+            
+            // Toggle chat window
+            toggleChat.addEventListener('click', function() {
+                chatContainer.classList.toggle('open');
+                toggleChat.textContent = chatContainer.classList.contains('open') ? '−' : '+';
+            });
+            
+            // Send message function
+            function sendMessage() {
+                const message = chatInput.value.trim();
+                if (message === '') return;
+                
+                // Add user message
+                addMessage(message, 'user');
+                chatInput.value = '';
+                
+                // Generate bot response
+                setTimeout(() => {
+                    const response = generateResponse(message);
+                    addMessage(response, 'bot');
+                    
+                    // Add suggested questions based on the conversation
+                    addSuggestedQuestions(response);
+                }, 1000);
+            }
+            
+            // Send message on button click
+            sendBtn.addEventListener('click', sendMessage);
+            
+            // Send message on Enter key
+            chatInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Add suggested question functionality
+            suggestedQuestions.forEach(question => {
+                question.addEventListener('click', function() {
+                    chatInput.value = this.textContent;
+                    sendMessage();
+                });
+            });
+            
+            // Add message to chat
+            function addMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                messageDiv.textContent = text;
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            // Generate bot response
+            function generateResponse(userMessage) {
+                const lowerMessage = userMessage.toLowerCase();
+                
+                // Environmental solutions knowledge base
+                if (lowerMessage.includes('carbon') || lowerMessage.includes('footprint')) {
+                    return "Cities can reduce their carbon footprint by transitioning to renewable energy sources, improving public transportation infrastructure, promoting electric vehicles, implementing green building standards, and increasing urban green spaces that absorb CO2.";
+                } else if (lowerMessage.includes('green infrastructure') || lowerMessage.includes('green space')) {
+                    return "Green infrastructure solutions include urban parks, green roofs, permeable pavements, rain gardens, and urban forests. These help manage stormwater, reduce urban heat island effect, improve air quality, and enhance residents' wellbeing.";
+                } else if (lowerMessage.includes('nasa') || lowerMessage.includes('data')) {
+                    return "NASA Earth observation data can help urban planners by providing information on air quality, urban heat islands, land use changes, vegetation health, and climate patterns. This data supports evidence-based decision making for sustainable urban development.";
+                } else if (lowerMessage.includes('transport') || lowerMessage.includes('mobility')) {
+                    return "Sustainable urban mobility solutions include expanding public transit networks, creating pedestrian-friendly streets, developing bike-sharing programs, implementing congestion pricing, and promoting transit-oriented development.";
+                } else if (lowerMessage.includes('energy') || lowerMessage.includes('renewable')) {
+                    return "Cities can transition to renewable energy by installing solar panels on buildings, developing district energy systems, utilizing geothermal energy, promoting energy efficiency standards, and investing in smart grid technologies.";
+                } else if (lowerMessage.includes('water') || lowerMessage.includes('management')) {
+                    return "Sustainable water management strategies include rainwater harvesting, greywater recycling, green infrastructure for stormwater management, water-efficient landscaping, and leak detection systems in municipal water networks.";
+                } else if (lowerMessage.includes('waste') || lowerMessage.includes('recycling')) {
+                    return "Effective waste management solutions include implementing comprehensive recycling programs, developing composting facilities for organic waste, reducing single-use plastics, and exploring waste-to-energy technologies.";
+                } else if (lowerMessage.includes('heat') || lowerMessage.includes('temperature')) {
+                    return "To combat urban heat islands, cities can increase vegetation cover, use reflective building materials, create green roofs and walls, preserve water bodies, and implement cool pavement technologies.";
+                } else if (lowerMessage.includes('resilience') || lowerMessage.includes('climate')) {
+                    return "Building climate resilience involves developing early warning systems, protecting natural buffers like wetlands and forests, strengthening infrastructure, creating climate adaptation plans, and engaging communities in preparedness efforts.";
+                } else {
+                    // If the question is not about environmental solutions
+                    if (!lowerMessage.includes('environment') && 
+                        !lowerMessage.includes('sustainable') && 
+                        !lowerMessage.includes('climate') && 
+                        !lowerMessage.includes('urban') && 
+                        !lowerMessage.includes('city') && 
+                        !lowerMessage.includes('green')) {
+                        return "I'm specialized in environmental solutions and sustainable urban planning. Let's focus on how we can create healthier cities and combat climate change. What specific environmental challenge are you interested in?";
+                    } else {
+                        // For other environmental questions, provide a general response
+                        return "Based on NASA data and urban planning best practices, I recommend integrating nature-based solutions, promoting compact urban development, investing in sustainable transportation, and using data-driven approaches to monitor environmental indicators. Could you provide more details about the specific challenge you're addressing?";
+                    }
+                }
+            }
+            
+            // Add suggested questions based on conversation
+            function addSuggestedQuestions(response) {
+                // Clear existing suggested questions
+                const existingSuggestions = document.querySelectorAll('.suggested-question');
+                existingSuggestions.forEach(el => el.remove());
+                
+                const suggestionsContainer = document.createElement('div');
+                suggestionsContainer.className = 'suggested-questions';
+                
+                // Add relevant suggested questions based on the response
+                if (response.includes('carbon')) {
+                    suggestionsContainer.innerHTML = `
+                        <button class="suggested-question">What are the most effective renewable energy sources for cities?</button>
+                        <button class="suggested-question">How can public transportation reduce emissions?</button>
+                        <button class="suggested-question">What policies encourage green building practices?</button>
+                    `;
+                } else if (response.includes('green infrastructure')) {
+                    suggestionsContainer.innerHTML = `
+                        <button class="suggested-question">How do green roofs benefit urban environments?</button>
+                        <button class="suggested-question">What are cost-effective green infrastructure solutions?</button>
+                        <button class="suggested-question">How can communities maintain green spaces?</button>
+                    `;
+                } else if (response.includes('NASA')) {
+                    suggestionsContainer.innerHTML = `
+                        <button class="suggested-question">What specific NASA datasets are useful for urban planning?</button>
+                        <button class="suggested-question">How can satellite imagery help monitor urban growth?</button>
+                        <button class="suggested-question">What tools are available for analyzing NASA Earth data?</button>
+                    `;
+                } else {
+                    // Default suggestions
+                    suggestionsContainer.innerHTML = `
+                        <button class="suggested-question">How can cities adapt to rising sea levels?</button>
+                        <button class="suggested-question">What are nature-based solutions for flood management?</button>
+                        <button class="suggested-question">How can urban agriculture contribute to food security?</button>
+                    `;
+                }
+                
+                chatMessages.appendChild(suggestionsContainer);
+                
+                // Add event listeners to new suggested questions
+                const newSuggestions = suggestionsContainer.querySelectorAll('.suggested-question');
+                newSuggestions.forEach(question => {
+                    question.addEventListener('click', function() {
+                        chatInput.value = this.textContent;
+                        sendMessage();
+                    });
+                });
+                
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+    </script>
+</body>
+</html>
